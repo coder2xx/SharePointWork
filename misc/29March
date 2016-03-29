@@ -1,0 +1,75 @@
+function CancelCourse(itemID) {
+
+    debugger
+
+    selectedCourseItemID = itemID;
+
+    var data = [];
+    data.push({ "id": "24", "value": "val1" });
+    data.push({ "id": "26", "value": "val2" });
+    data.push({ "id": "27", "value": "val3" });
+    
+    var ctx = SP.ClientContext.get_current();    
+    var web = ctx.get_web();
+    var list = web.get_lists().getByTitle("Training Cancellation");
+    var camlQuery = new SP.CamlQuery();
+    camlQuery.set_viewXml('<View></View>');
+    var items = list.getItems(camlQuery);
+    ctx.load(items);
+    ctx.executeQueryAsync(
+    
+    function() {
+    
+    debugger
+    
+     	var s = $("<select id=\"selectCancellationCode\" name=\"selectName\" />");
+
+	    for (i = 0; i < items.get_count(); i++) {
+	
+	        $("<option />", { value: items.getItemAtIndex(i).id, text: items.getItemAtIndex(i).value }).appendTo(s);
+	    }
+	
+	    $("#dialog").append(s);
+	    $("#dialog").dialog("open");
+    },
+    function() {
+    
+    alert("error");
+    });   
+}
+
+function CancelCourseByID() {
+
+    debugger
+
+    var selectedCode = $("#selectCancellationCode").val();
+
+    if (selectedCode) {
+
+        var web = ctx.get_web();
+        var list = web.get_lists().getByTitle("Draft Schedule");
+        var item = list.getItemById(selectedCourseItemID);
+        item.set_item('Schedule_x0020_Status', 'Cancel');
+
+        var lookupVar = new SP.FieldLookupValue();
+        lookupVar.set_lookupId(selectedCode);
+        item.set_item('Cancellation_x0020_Code', lookupVar);
+
+        //item.update();
+
+        ctx.executeQueryAsync(
+
+           function () {
+
+               $("#dialog").dialog("close");
+               alert("Course has been cancelled successfuly.");
+               location.reload();
+           },
+           function () {
+
+               selectedCourseItemID = 0;
+               alert("Failed to cancel a course.");
+           }
+           );
+    }
+}
