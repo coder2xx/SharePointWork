@@ -1,0 +1,534 @@
+﻿<style>
+
+#titleAreaBox
+{
+	width: 100%
+	
+}
+
+.ms-breadcrumb-box {
+
+float: left; 
+   width: 40%;
+}
+
+
+#titleAreaRow div:nth-child(3) {
+    
+padding-left:    25%;
+}
+
+.ms-belltown-searcharea {
+    padding-top: 5px;
+}
+
+#searchInputBox {
+    margin-bottom: 0px;
+        width: 300px;
+    }
+    
+    .ms-srch-sb-border {
+    
+    border-radius: 7px;
+    }
+.ms-srch-sb > input {
+
+    height: 35px; 
+    width:225px;
+    	vertical-align:middle;
+    }
+    
+.ms-srch-sb > .ms-srch-sb-navLink{
+	
+	vertical-align:middle;
+}    
+    
+    .ms-srch-sb > .ms-srch-sb-searchLink{
+	
+	vertical-align:middle;
+}
+
+
+.contentwrapper {
+    margin: 1%;
+    min-width: 90%;
+}
+
+
+
+.item a img{
+	
+	opacity: 0.8;
+}
+
+.item:hover a img{
+	
+	opacity: 1;
+}
+
+.item a div{
+	
+	display: none;
+}
+
+.item:hover a div{
+	
+	display:block;
+}
+
+#videoCarousel{
+	
+	width:100%;
+}
+
+#vidTitle {
+    width: 100%;
+    color: white;
+    margin-top: 175px;
+    position: absolute;
+    background-color: rgba(0,0, 0, 0.8);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    height: 35px;
+    text-align: center;
+    padding: 5px 5% 0 5%;
+    }
+</style>
+
+<script>
+// JavaScript source code
+
+//namespace 
+var videosApp = window.videosApp || {};
+
+videosApp.Services = videosApp.Services || {};
+
+videosApp.Services.GetVideosService = function () {
+
+    var thisService = this;
+
+    thisService.IsVideoPortalEnabled = true;
+    thisService.VideoPortalUrl = "";
+    thisService.VideoPortalUrl = "";
+
+    thisService.GetPopularVideos = function (startIndex, itemLimit) {
+
+        var popularVideos = [];
+
+        var defObj = new $.Deferred();
+        {
+            GetVideoPortalUrl().then(function (isVideoPortalEnabled, videoPortalUrl) {
+
+                thisService.IsVideoPortalEnabled = isVideoPortalEnabled;
+                thisService.VideoPortalUrl = videoPortalUrl;
+
+                if (thisService.IsVideoPortalEnabled == true) {
+
+                    getPopularVideos(thisService.VideoPortalUrl, startIndex, itemLimit).then(function (videos) {
+
+                        thisService.Videos = videos;
+
+                        defObj.resolve(videos);
+                    });
+                }
+                else {
+
+                    defObj.resolve(popularVideos);
+                }
+            });
+        }
+        return defObj.promise();
+    }
+
+    thisService.getVideos = function () {
+
+        var defObj = new $.Deferred();
+        {
+            GetVideoPortalUrl().then(function (isVideoPortalEnabled, videoPortalUrl) {
+
+                thisService.IsVideoPortalEnabled = isVideoPortalEnabled;
+                thisService.VideoPortalUrl = videoPortalUrl;
+
+                if (thisService.IsVideoPortalEnabled == true) {
+
+                    GetChannels(thisService.VideoPortalUrl).then(function (channels) {
+
+                        thisService.Channels = channels;
+                        debugger
+
+                        if (thisService.Channels.length > 0) {
+
+                            GetVideos(thisService.VideoPortalUrl, thisService.Channels).then(function (videos) {
+
+                                thisService.Videos = videos;
+
+                                defObj.resolve(videos);
+                            });
+                        }
+                        else {
+
+                            thisService.Videos = [];
+                            defObj.resolve(thisService.Videos);
+                        }
+                    });
+                }
+                else {
+
+                    thisService.Videos = [];
+                    defObj.resolve(thisService.Videos);
+                }
+            });
+        }
+        return defObj.promise();
+    }
+
+    // Get Portal Url
+    GetVideoPortalUrl = function () {
+
+        success_GetVideoPortalUrl = function (data) {
+
+            defObj.resolve(data.d.IsVideoPortalEnabled, data.d.VideoPortalUrl);
+        }
+
+        error_GetVideoPortalUrl = function (data) {
+
+            //debugger
+            failure(data);
+            defObj.reject("");
+        }
+
+        var defObj = new $.Deferred();
+        {
+            $.ajax({
+
+                url: _spPageContextInfo.webAbsoluteUrl + "/_api/VideoService.Discover",
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+
+                success: success_GetVideoPortalUrl,
+                error: error_GetVideoPortalUrl
+            });
+        }
+        return defObj.promise();
+    }
+
+    // Get Channel Details
+    GetChannels = function (videoPortalUrl) {
+
+        success_GetChannels = function (data) {
+
+            //debugger
+
+            var channels = [];
+
+            try {
+
+                channels = data.d.results;
+            }
+            catch (exception) {
+
+                channels = [];
+            }
+            defObj.resolve(channels);
+        }
+
+        error_GetChannels = function (data) {
+
+            debugger
+            var channels = [];
+
+            defObj.reject(channels);
+        }
+
+        var getChannelsAPI = videoPortalUrl + "/_api/VideoService/Channels";
+
+        var defObj = new $.Deferred();
+        {
+            $.ajax({
+
+                url: getChannelsAPI,
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+
+                success: success_GetChannels,
+                error: error_GetChannels
+            });
+        }
+        return defObj.promise();
+    }
+
+    /// GET VIDEOS
+    GetVideos = function (videoPortalUrl, channels) {
+
+        success_GetVideos = function (data) {
+
+            //debugger
+
+            var videos = [];
+
+            try {
+
+                videos = data.d.results;
+            }
+            catch (exception) {
+
+                videos = [];
+            }
+            defObj.resolve(videos);
+        }
+
+        error_GetVideos = function (data) {
+
+            debugger
+
+            var videos = [];
+
+            defObj.reject(videos);
+        }
+
+        var videos = [];
+
+        var defObj = new $.Deferred();
+        {
+            var promises = [];
+
+            //debugger
+
+            for (chnlCntr = 0; chnlCntr < channels.length; chnlCntr++) {
+
+                promises.push(GetVideosByChannel(videoPortalUrl, channels[chnlCntr].Id));
+            }
+
+            var channelCount = 4;
+
+            $.when.apply($, promises).then(function () {
+
+                for (argCntr = 0; argCntr < arguments.length; argCntr++) {
+                    for (videoCntr = 0; videoCntr < arguments[argCntr].length; videoCntr++) {
+
+                        videos.push(arguments[argCntr][videoCntr]);
+                    }
+                }
+                defObj.resolve(videos);
+            });
+        }
+        return defObj.promise();
+    }
+
+    /// GET VIDEOS BY CHANNEL
+    GetVideosByChannel = function (videoPortalUrl, channel) {
+
+        success_GetVideosByChannel = function (data) {
+
+            //debugger
+
+            var videos = [];
+
+            try {
+
+                videos = data.d.results;
+
+            }
+            catch (exception) {
+
+                videos = [];
+            }
+            defObj.resolve(videos);
+        }
+
+        error_GetVideosByChannel = function (data) {
+
+            //debugger
+
+            var videos = [];
+
+            defObj.reject(videos);
+        }
+
+        var defObj = new $.Deferred();
+        {
+            $.ajax({
+
+                //                url: videoPortalUrl + "/_api/VideoService/Channels(guid'" + channel + "')/GetAllVideos?$Select=Title,ViewCount,DefaultEmbedCode",
+                url: videoPortalUrl + "/_api/VideoService/Channels(guid'" + channel + "')/Videos?$select=Title,DefaultEmbedCode,ChannelID&$top=1&$skip=0",
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+
+                success: success_GetVideosByChannel,
+                error: error_GetVideosByChannel
+            });
+        }
+        return defObj.promise();
+    }
+
+    /// GET POPULAR VIDEOS 
+    getPopularVideos = function (videoPortalUrl, startIndex, itemLimit) {
+
+        success_getPopularVideos = function (data) {
+
+            //debugger
+
+            var videos = [];
+
+            try {
+
+                videos = data.d.results;
+
+            }
+            catch (exception) {
+
+                videos = [];
+            }
+            defObj.resolve(videos);
+        }
+
+        error_getPopularVideos = function (data) {
+
+            //debugger
+
+            var videos = [];
+
+            defObj.reject(videos);
+        }
+
+        var defObj = new $.Deferred();
+        {
+        
+            $.ajax({
+
+                //                url: videoPortalUrl + "/_api/VideoService/Channels(guid'" + channel + "')/GetAllVideos?$Select=Title,ViewCount,DefaultEmbedCode",
+                url: videoPortalUrl + "/_api/videoservice/search/popular(startItemIndex='" + startIndex + "',itemLimit='" + itemLimit + "')",
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+
+                success: success_getPopularVideos,
+                error: error_getPopularVideos
+            });
+        }
+        return defObj.promise();
+    }
+}
+
+videosApp.VideoComponent = function (GetVideosService) {
+
+    var thisVideoComponent = this;
+
+    thisVideoComponent.index = 0;
+
+    thisVideoComponent.current = {
+
+        ID: "",
+        Name: "loading...",
+        Email: "",
+        Date_Of_Joining: "loading...",
+        Location: "loading...",
+        Display_Picture_Url: ""
+    }
+
+    thisVideoComponent.videos = [];
+    thisVideoComponent.videos.push({'Title':'loading..', 'Channel':'', 'CreatedDate':''});
+
+    GetVideosService.GetPopularVideos(0,10).then(function (NewJoineesList) {
+
+//debugger
+
+        thisVideoComponent.videos = NewJoineesList;
+
+        if (thisVideoComponent.videos.length > 0) {
+
+            thisVideoComponent.index = 0;
+            thisVideoComponent.current = thisVideoComponent.videos[0];
+        }
+        else {
+
+            thisVideoComponent.index = 0;
+            thisVideoComponent.current = "";
+        }
+    });    
+}
+
+videosApp.VideoComponent.annotations = [
+
+    new angular.ComponentAnnotation({
+
+        selector: 'component-o365video',
+        appInjector: [videosApp.Services.GetVideosService]
+
+    }),
+    new angular.ViewAnnotation({
+
+        template: '<div  id="videoCarousel" class="carousel slide" data-ride="carousel">'+       
+				    
+				    '<div class="carousel-inner" role="listbox">'+
+				        '<div  class="item" *ng-for="#vid of videos; #vidI = index" [class.active]="vidI == 0" >'+
+				            '<a href="{{ vid.Url}}">'+
+ 						        '<div id="vidTitle" title="{{ vid.Title}}" >'+
+						        '{{ vid.Title }}</div>'+            
+					            '<img  src="{{ vid.ThumbnailUrl }}" alt="{{ vid.Title}}">'+
+				            '</a>'+                    
+				        '</div>'+
+				    '</div>'+
+ '<a class="left carousel-control" href="#videoCarousel" role="button" data-slide="prev">'+
+    '<span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>'+
+    '<span class="sr-only">Previous</span>'+
+  '</a>'+
+  '<a class="right carousel-control" href="#videoCarousel" role="button" data-slide="next">'+
+    '<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>'+
+    '<span class="sr-only">Next</span>'+
+  '</a>'+
+  
+				'</div>',
+
+        directives: [angular.NgFor, ]
+    })
+];
+
+videosApp.VideoComponent.parameters = [[videosApp.Services.GetVideosService]];
+
+$(document).ready(function () {
+
+
+    angular.bootstrap(videosApp.VideoComponent);
+    
+    $.ajax({
+
+                url: _spPageContextInfo.webAbsoluteUrl + "/_api/search/query?Querytext='*'&amp;Properties='GraphQuery:ACTOR(ME\,action\:1013)'&RowLimit=5",
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+
+                success: function(data){
+                
+console.log(data);
+
+$(data.d.query.PrimaryQueryResult.RelevantResults.Table.Rows.results).each(function (i, row) {
+
+//$(row.Cells.results).each(function (i, res) {
+
+//	console.log(i+"::::"+res.Key + "::::" + res.Value);
+//});
+//console.log(row.Cells);
+
+console.log(row.Cells.results[6].Value+"::::"+row.Cells.results[31].Value);    
+                        
+                    });            
+                
+                },
+                error: function(e) { alert(e);}
+            });
+
+    
+    
+});
+
+</script>
+
+<component-o365video></component-o356video><html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:_dlc_DocId msdt:dt="string">65UQ4JA4C4UM-1732292045-18</mso:_dlc_DocId>
+<mso:_dlc_DocIdItemGuid msdt:dt="string">1c41d7f0-1184-4c16-b2e4-b4f1c11ceecc</mso:_dlc_DocIdItemGuid>
+<mso:_dlc_DocIdUrl msdt:dt="string">https://ezestind.sharepoint.com/OfficeLabs/_layouts/15/DocIdRedir.aspx?ID=65UQ4JA4C4UM-1732292045-18, 65UQ4JA4C4UM-1732292045-18</mso:_dlc_DocIdUrl>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
