@@ -1,4 +1,4 @@
-﻿
+
 var Apps = window.Apps || {};
 
 Apps.Videos = Apps.Videos || {};
@@ -75,7 +75,7 @@ Apps.Videos.Services.GetService = function () {
         }
         return defObj.promise();
     }
-    
+
     thisService.GetVideos = function () {
 
         var defObj = new $.Deferred();
@@ -90,7 +90,7 @@ Apps.Videos.Services.GetService = function () {
                     getChannels(thisService.VideoPortalUrl).then(function (channels) {
 
                         thisService.Channels = channels;
-                        
+
                         if (thisService.Channels.length > 0) {
 
                             getVideosByChannels(thisService.VideoPortalUrl, thisService.Channels).then(function (videos) {
@@ -120,7 +120,7 @@ Apps.Videos.Services.GetService = function () {
 
     // #region: PRIVATE FUNCTIONS
 
-    // Get Portal Url
+    /// GET PORTAL URL
     getVideoPortalUrl = function () {
 
         success_GetVideoPortalUrl = function (data) {
@@ -165,7 +165,7 @@ Apps.Videos.Services.GetService = function () {
             defObj.resolve(videos);
         }
         error_getPopularVideos = function (data) {
-            
+
             console.log("error_getPopularVideos : ");
 
             var videos = [];
@@ -188,7 +188,7 @@ Apps.Videos.Services.GetService = function () {
         return defObj.promise();
     }
 
-    // Get Channel Details
+    /// GET CHANNELS
     getChannels = function (videoPortalUrl, PageSize, SkipPages) {
 
         success_GetChannels = function (data) {
@@ -207,7 +207,7 @@ Apps.Videos.Services.GetService = function () {
         }
 
         error_GetChannels = function (data) {
-            
+
             console.log("error_GetChannels : ");
 
             var channels = [];
@@ -236,7 +236,59 @@ Apps.Videos.Services.GetService = function () {
         return defObj.promise();
     }
 
-    /// GET VIDEOS
+    /// GET CHANNEL DETAILS
+    getChannelDetails = function (videoPortalUrl, ChannelGuID) {
+
+        success_GetChannelDetails = function (data) {
+
+            var channelDetails = {};
+
+            try {
+
+                channelDetails = data.d.results;
+            }
+            catch (exception) {
+
+                console.log("Exception @ success_GetChannelDetails : ");
+                console.log(exception.number + " : " + exception.message);
+            }
+            defObj.resolve(channelDetails);
+        }
+
+        error_GetChannelDetails = function (data) {
+
+            console.log("error_GetChannelDetails : ");
+
+            var emptyDetails = {};
+
+            defObj.reject(emptyDetails);
+        }
+
+        var defObj = new $.Deferred();
+        {
+            if (!ChannelGuID) {
+
+                var emptyDetails = {};
+                defObj.resolve(emptyDetails);
+            }
+            else {
+
+                var getChannelDetailsAPI = videoPortalUrl + "/_api/videoservice/Channels(guid'" + ChannelGuID + "')?";
+                getChannelDetailsAPI += "&$select=CanAdministrateByCurrent,CanEditByCurrent,CanViewByCurrent";
+
+                $.ajax({
+                    url: getChannelDetailsAPI,
+                    method: "GET",
+                    headers: { "Accept": "application/json; odata=verbose" },
+                    success: success_GetChannelDetails,
+                    error: error_GetChannelDetails
+                });
+            }
+        }
+        return defObj.promise();
+    }
+
+    /// GET VIDEOS BY CHANNELS
     getVideosByChannels = function (videoPortalUrl, channels) {
 
         var defObj = new $.Deferred();
@@ -307,6 +359,59 @@ Apps.Videos.Services.GetService = function () {
                 headers: { "Accept": "application/json; odata=verbose" },
                 success: success_GetVideosByChannel,
                 error: error_GetVideosByChannel
+            });
+        }
+        return defObj.promise();
+    }
+
+    /// GET VIDEOS BY CHANNEL
+    searchVideosByChannel = function (videoPortalUrl, ChannelGuID, PageSize, SkipPages, SearchText) {
+
+        success_searchVideosByChannel = function (data) {
+
+            var videos = [];
+
+            try {
+
+                videos = data.d.results;
+            }
+            catch (exception) {
+
+                console.log(exception.number + " : " + exception.message);
+
+                videos = [];
+            }
+            defObj.resolve(videos);
+        }
+
+        error_searchVideosByChannel = function (data) {
+
+            console.log("error_GetVideosByChannel : ");
+
+            var videos = [];
+
+            defObj.reject(videos);
+        }
+
+        var defObj = new $.Deferred();
+        {
+            var searchText = SearchText || "*";
+
+            var pageSize = PageSize || 10;
+            var skipPages = SkipPages || 0;
+            var skipVideos = pageSize * skipPages;
+
+            var searchVideosByChannelAPI = videoPortalUrl + "/_api/VideoService/Channels(guid'" + ChannelGuID + "')/Search/Query";
+            searchVideosByChannelAPI += "?querytext='" + searchText + "'";
+            searchVideosByChannelAPI += "&$top=" + pageSize + "&$skip=" + skipVideos;
+            searchVideosByChannelAPI += "&$select=Title,DefaultEmbedCode,ChannelID";
+
+            $.ajax({
+                url: searchVideosByChannelAPI,
+                method: "GET",
+                headers: { "Accept": "application/json; odata=verbose" },
+                success: success_searchVideosByChannel,
+                error: error_searchVideosByChannel
             });
         }
         return defObj.promise();
