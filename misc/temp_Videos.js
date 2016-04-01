@@ -9,9 +9,23 @@ Apps.Videos.Services.GetService = function () {
 
     var thisService = this;
 
-    thisService.IsVideoPortalEnabled = true;
+    $.ajax({
+        url: _spPageContextInfo.webAbsoluteUrl + "/_api/VideoService.Discover",
+        method: "GET",
+        async: false,
+        headers: { "Accept": "application/json; odata=verbose" },
+        success: function (data) {
 
-    thisService.VideoPortalUrl = "";
+            thisService.IsVideoPortalEnabled = data.d.IsVideoPortalEnabled;
+            thisService.VideoPortalUrl = data.d.VideoPortalUrl;
+        },
+        error: function (data) {
+
+            console.log("error_GetVideoPortalUrl : ");
+            thisService.IsVideoPortalEnabled = false;
+            thisService.VideoPortalUrl = "";
+        }
+    });
 
 
     // #region: PUBLIC FUNCTIONS
@@ -21,27 +35,20 @@ Apps.Videos.Services.GetService = function () {
         var startIndex = StartIndex || 0;
         var itemLimit = VideoItemsLimit || 5;
 
-        var popularVideos = [];
-
         var defObj = new $.Deferred();
         {
-            GetVideoPortalUrl().then(function (isVideoPortalEnabled, videoPortalUrl) {
+            if (thisService.IsVideoPortalEnabled == true) {
 
-                thisService.IsVideoPortalEnabled = isVideoPortalEnabled;
-                thisService.VideoPortalUrl = videoPortalUrl;
+                getPopularVideos(thisService.IsVideoPortalEnabled, startIndex, itemLimit).then(function (videos) {
 
-                if (thisService.IsVideoPortalEnabled == true) {
+                    defObj.resolve(videos);
+                });
+            }
+            else {
 
-                    getPopularVideos(videoPortalUrl, startIndex, itemLimit).then(function (videos) {
-
-                        defObj.resolve(videos);
-                    });
-                }
-                else {
-
-                    defObj.resolve(popularVideos);
-                }
-            });
+                var emptyVideos = [];
+                defObj.resolve(emptyVideos);
+            }
         }
         return defObj.promise();
     }
@@ -51,27 +58,21 @@ Apps.Videos.Services.GetService = function () {
         var pageSize = PageSize || 10;
         var skipPages = SkipPages || 0;
 
-        var channels = [];
 
         var defObj = new $.Deferred();
         {
-            GetVideoPortalUrl().then(function (isVideoPortalEnabled, videoPortalUrl) {
+            if (thisService.IsVideoPortalEnabled == true) {
 
-                thisService.IsVideoPortalEnabled = isVideoPortalEnabled;
-                thisService.VideoPortalUrl = videoPortalUrl;
-
-                if (thisService.IsVideoPortalEnabled == true) {
-
-                    getChannels(videoPortalUrl, pageSize, skipPages).then(function (channels) {
-
-                        defObj.resolve(channels);
-                    });
-                }
-                else {
+                getChannels(thisService.IsVideoPortalEnabled, pageSize, skipPages).then(function (channels) {
 
                     defObj.resolve(channels);
-                }
-            });
+                });
+            }
+            else {
+
+                var emptyChannels = [];
+                defObj.resolve(emptyChannels);
+            }
         }
         return defObj.promise();
     }
@@ -119,33 +120,6 @@ Apps.Videos.Services.GetService = function () {
 
 
     // #region: PRIVATE FUNCTIONS
-
-    /// GET PORTAL URL
-    getVideoPortalUrl = function () {
-
-        success_GetVideoPortalUrl = function (data) {
-
-            defObj.resolve(data.d.IsVideoPortalEnabled, data.d.VideoPortalUrl);
-        }
-        error_GetVideoPortalUrl = function (data) {
-
-            console.log("error_GetVideoPortalUrl : ");
-
-            defObj.reject("");
-        }
-
-        var defObj = new $.Deferred();
-        {
-            $.ajax({
-                url: _spPageContextInfo.webAbsoluteUrl + "/_api/VideoService.Discover",
-                method: "GET",
-                headers: { "Accept": "application/json; odata=verbose" },
-                success: success_GetVideoPortalUrl,
-                error: error_GetVideoPortalUrl
-            });
-        }
-        return defObj.promise();
-    }
 
     /// GET POPULAR VIDEOS 
     getPopularVideos = function (videoPortalUrl, StartIndex, ItemLimit) {
@@ -364,8 +338,34 @@ Apps.Videos.Services.GetService = function () {
         return defObj.promise();
     }
 
+    /// SEARCH VIDEOS BY CHANNELS
+    searchVideosByChannels = function (videoPortalUrl, channels, SearchText) {
+
+        var defObj = new $.Deferred();
+        {
+            var promises = [];
+
+            for (chnlCntr = 0; chnlCntr < channels.length; chnlCntr++) {
+
+                promises.push(searchVideosByChannel(videoPortalUrl, channels[chnlCntr].Id));
+            }
+
+            var videos = [];
+
+            $.when.apply($, promises).then(function () {
+
+                for (argCntr = 0; argCntr < arguments.length; argCntr++) {
+
+                    videos.concat(arguments[argCntr]);
+                }
+                defObj.resolve(videos);
+            });
+        }
+        return defObj.promise();
+    }
+
     /// GET VIDEOS BY CHANNEL
-    searchVideosByChannel = function (videoPortalUrl, ChannelGuID, PageSize, SkipPages, SearchText) {
+    searchVideosByChannel = function (videoPortalUrl, ChannelGuID, SearchText, PageSize, SkipPages, ) {
 
         success_searchVideosByChannel = function (data) {
 
